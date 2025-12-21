@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-generator
+  namespace: logging-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-generator
+  template:
+    metadata:
+      labels:
+        app: log-generator
+    spec:
+      containers:
+        - name: log-generator
+          image: ji0513ji/log-generator:1.1.1
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.logging-system.svc.cluster.local:9092"
+

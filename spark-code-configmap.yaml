@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-app-code
+  namespace: default
+data:
+  user_activity_streaming.py: |
+    # 여기에 스파크 스트리밍 코드 붙여넣기
+    # 예: Kafka에서 topic consume → 처리 → 로그 출력
+    from pyspark.sql import SparkSession
+    from pyspark.sql.functions import from_json, col
+    from pyspark.sql.types import StructType, StringType
+
+    spark = (
+        SparkSession.builder
+        .appName("KafkaConsumer")
+        .getOrCreate()
+    )
+
+    df = (
+        spark.readStream
+            .format("kafka")
+            .option("kafka.bootstrap.servers", "kafka.logging-system.svc.cluster.local:9092")
+            .option("subscribe", "delivery_log")
+            .load()
+    )
+
+    query = (
+        df.writeStream
+            .format("console")
+            .option("truncate", False)
+            .start()
+    )
+
+    query.awaitTermination()
+
