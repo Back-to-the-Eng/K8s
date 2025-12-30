@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: log-generator
-          image: ji0513ji/log-generator:1.1.1
+          image: ji0513ji/log-generator:1.1.2
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "kafka.logging-system.svc.cluster.local:9092"
