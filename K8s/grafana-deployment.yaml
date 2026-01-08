@@ -23,11 +23,10 @@ metadata:
   labels:
     app: grafana
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
     - port: 3000
       targetPort: 3000
-      nodePort: 30300
       name: http
   selector:
     app: grafana
@@ -68,6 +67,9 @@ spec:
           volumeMounts:
             - name: grafana-storage
               mountPath: /var/lib/grafana
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning/datasources
+              readOnly: true
           resources:
             requests:
               memory: "256Mi"
@@ -76,6 +78,9 @@ spec:
               memory: "1Gi"
               cpu: "500m"
       volumes:
-        - name: grafana-storage
-          emptyDir: {}
+      - name: grafana-storage
+        emptyDir: {}
+      - name: grafana-provisioning
+        configMap:
+          name: grafana-provisioning
 

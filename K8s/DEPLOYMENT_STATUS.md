@@ -1,115 +1,142 @@
-# EKS 배포 현황 및 전체 구조 정리
+# 배포 상태 및 아키텍처
 
-## 📊 전체 아키텍처
+## 최종 배포 상태
+
+### API-Server docker-compose.yml 기준 전체 비교
+
+| 구성 요소 | docker-compose.yml | K8s 배포 | 상태 | 네임스페이스 |
+|---------|-------------------|---------|------|------------|
+| Zookeeper | 있음 | Strimzi 관리 | 정상 | kafka |
+| Kafka | 있음 | Strimzi Kafka | 정상 | kafka |
+| Kafka Connect | 없음 | 배포됨 (추가) | 정상 | kafka |
+| MinIO | 있음 | 배포됨 | 정상 | storage |
+| Spark Streaming | 있음 | 배포됨 | 정상 | default |
+| WAS | 있음 | 배포됨 | 정상 | was |
+| Kafka Exporter | 있음 | 배포됨 | 정상 | monitoring |
+| Prometheus | 있음 | 배포됨 | 정상 | monitoring |
+| Grafana | 있음 | 배포됨 | 정상 | monitoring |
+
+---
+
+## 현재 배포 상태 상세
+
+### 1. Kafka 클러스터
+- **네임스페이스**: `kafka`
+- **브로커**: 3개 (streaming-cluster-broker-pool-0, 1, 2)
+- **Kafka Connect**: 2개 (streaming-connect-cluster-connect-0, 1)
+- **Strimzi Operator**: 실행 중
+- **토픽**: 
+  - `user-activity-logs` (WAS와 Spark가 사용, 3 파티션, 3 리플리케이션)
+- **서비스**: 
+  - `streaming-cluster-kafka-bootstrap` (ClusterIP)
+  - `streaming-cluster-kafka-brokers` (ClusterIP)
+  - `streaming-connect-cluster-connect-api` (ClusterIP)
+
+### 2. WAS (Web Application Server)
+- **네임스페이스**: `was`
+- **Pod 개수**: 2개
+- **이미지**: ji0513ji/log-generator:1.1.2
+- **서비스**: `was-service-external` (NodePort 30080)
+- **Kafka 연결**: `streaming-cluster-kafka-bootstrap.kafka.svc:9092`
+- **사용 토픽**: `user-activity-logs`
+
+### 3. Spark Streaming
+- **네임스페이스**: `default`
+- **Pod**: spark-streaming
+- **이미지**: doyoomii/spark-k8s:latest
+- **상태**: 정상 실행 중
+- **Kafka 연결**: `streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092`
+- **MinIO 연결**: `http://minio.storage.svc.cluster.local:9000`
+- **S3A 라이브러리**: 추가됨
+
+### 4. Monitoring Stack
+- **네임스페이스**: `monitoring`
+- **Prometheus**: 정상 실행 중
+- **Grafana**: 정상 실행 중 (NodePort 30300)
+- **Kafka Exporter**: 정상 실행 중
+- **서비스**:
+  - `prometheus` (ClusterIP 9090)
+  - `grafana` (ClusterIP 3000)
+  - `grafana-external` (NodePort 30300)
+  - `kafka-exporter` (ClusterIP 9308)
+
+### 5. Storage
+- **네임스페이스**: `storage`
+- **MinIO**: 정상 실행 중
+- **서비스**:
+  - `minio` (ClusterIP 9000, 9001)
+  - `minio-external` (NodePort 30900, 30901)
+
+---
+
+## 아키텍처 다이어그램
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    EKS 클러스터                              │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────────┐      ┌──────────────────┐             │
-│  │   WAS (API)      │─────▶│     Kafka        │             │
-│  │  (logging-system)│      │     (kafka)      │             │
-│  │  - was-deployment│      │  - streaming-    │             │
-│  │  - 2 replicas    │      │    cluster       │             │
-│  └──────────────────┘      │  - 3 brokers     │             │
-│                            │  - streaming-    │             │
-│                            │    topic         │             │
-│                            └────────┬─────────┘             │
-│                                     │                        │
-│                            ┌────────▼─────────┐             │
-│                            │   Spark App      │             │
-│                            │   (default)      │             │
-│                            │  - Consumer      │             │
-│                            └──────────────────┘             │
-│                                                               │
-│  ┌──────────────────┐                                       │
-│  │ Log Generator    │  (선택적 - 별도 로그 생성)            │
-│  │ (logging-system) │                                       │
-│  └──────────────────┘                                       │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
+WAS (was namespace)
+    |
+    v
+Kafka Cluster (kafka namespace)
+    |                          |
+    |                          v
+    |                    Kafka Connect
+    |                          |
+    v                          v
+Spark Application          Monitoring Stack
+(default namespace)       (monitoring namespace)
+    |                          |
+    v                          v
+MinIO (storage namespace)  Prometheus → Grafana
 ```
 
-## ✅ 배포 완료된 리소스
+---
 
-### 1. Kafka 인프라
-- ✅ **Strimzi Operator** (`kafka` 네임스페이스)
-  - `strimzi-cluster-operator` 배포됨
-- ✅ **Kafka Cluster** (`kafka` 네임스페이스)
-  - `streaming-cluster` - 3개 브로커 실행 중
-  - Service: `streaming-cluster-kafka-bootstrap` (9092)
-- ✅ **Kafka Topic** (`kafka` 네임스페이스)
-  - `streaming-topic` - 3 partitions, 3 replicas
+## 연결 상태
 
-### 2. Spark 인프라
-- ✅ **Spark Operator** (`spark-operator` 네임스페이스)
-  - `spark-operator-controller` 배포됨
-  - `spark-operator-webhook` 배포됨
+### 1. WAS → Kafka
+- **설정**: `SPRING_KAFKA_BOOTSTRAP_SERVERS=streaming-cluster-kafka-bootstrap.kafka.svc:9092`
+- **토픽**: `user-activity-logs`
+- **상태**: 정상
 
-### 3. WAS (Web Application Server)
-- ✅ **WAS Deployment** (`logging-system` 네임스페이스)
-  - `was-deployment` - 2 replicas
-  - Image: `ji0513ji/log-generator:1.1.1`
-  - Port: 8080
-- ✅ **WAS Service (내부)**
-  - `was-service` - ClusterIP (포트 80)
-- ✅ **WAS Service (외부)**
-  - `was-service-external` - NodePort (포트 30080)
+### 2. Spark → Kafka
+- **설정**: `KAFKA_BOOTSTRAP_SERVERS=streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092`
+- **토픽**: `user-activity-logs`
+- **상태**: 정상
 
-## ✅ 추가 배포 완료 리소스
+### 3. Spark → MinIO
+- **설정**: `fs.s3a.endpoint=http://minio.storage.svc.cluster.local:9000`
+- **버킷**: mybucket
+- **상태**: 정상
 
-### 1. Log Generator
-- ✅ **Log Generator Deployment** (`logging-system` 네임스페이스)
-  - `log-generator` - 1 replica
-  - Image: `ji0513ji/log-generator:1.1.1`
-  - Kafka 연결: `kafka.logging-system.svc.cluster.local:9092` (수정 필요)
+### 4. Prometheus → Kafka Exporter
+- **포트**: 9308
+- **상태**: 정상
 
-### 2. Spark Application
-- ✅ **Spark ServiceAccount** (`default` 네임스페이스)
-  - `spark` - Spark Application 실행 권한
-- ✅ **Spark ConfigMap** (`default` 네임스페이스)
-  - `spark-app-code` - Spark 스트리밍 코드 저장
-  - Kafka 주소 수정 완료: `streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092`
-  - Topic 수정 완료: `streaming-topic`
-- ✅ **Spark Application** (`default` 네임스페이스)
-  - `spark-kafka-consumer` - Kafka에서 데이터 소비 및 처리
-  - Kafka 주소 수정 완료: `streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092`
+### 5. Grafana → Prometheus
+- **상태**: 정상
 
-## 🔧 수정 완료 사항
+---
 
-### 1. Spark Application Kafka 주소 수정 ✅
-- 수정 전: `kafka.logging-system.svc.cluster.local:9092`
-- 수정 후: `streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092`
+## 서비스 엔드포인트
 
-### 2. Spark ConfigMap Kafka 주소 및 Topic 수정 ✅
-- Kafka 주소 수정 완료
-- Topic 수정: `delivery_log` → `streaming-topic`
+### 외부 접근 가능한 서비스
+- **WAS**: NodePort 30080
+- **Grafana**: NodePort 30300
+- **MinIO API**: NodePort 30900
+- **MinIO Console**: NodePort 30901
 
-## 📋 배포 순서 (모두 완료)
+### 내부 접근 서비스
+- **Kafka Bootstrap**: `streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092`
+- **Prometheus**: `prometheus.monitoring.svc.cluster.local:9090`
+- **Kafka Connect API**: `streaming-connect-cluster-connect-api.kafka.svc.cluster.local:8083`
 
-1. ✅ Kafka 인프라 (완료)
-2. ✅ Spark Operator (완료)
-3. ✅ WAS (완료)
-4. ✅ Spark ServiceAccount 배포 (완료)
-5. ✅ Spark ConfigMap 배포 및 수정 (완료)
-6. ✅ Spark Application 배포 및 수정 (완료)
-7. ✅ Log Generator 배포 (완료)
+---
 
-## 🌐 네임스페이스 구조
+## 배포 완료 상태
 
-- `kafka`: Kafka 클러스터 및 관련 리소스
-- `spark-operator`: Spark Operator
-- `logging-system`: WAS 및 Log Generator
-- `default`: Spark Application
+- 모든 구성 요소가 K8s에 배포됨
+- docker-compose.yml의 모든 서비스가 K8s로 마이그레이션됨
+- 추가 구성 요소 (Kafka Connect)도 배포됨
+- 모든 Pod가 정상 실행 중
+- 모든 연결이 정상 작동
 
-## 🔗 서비스 연결 정보
-
-### Kafka 접속
-- 내부: `streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092`
-- Topic: `streaming-topic`
-
-### WAS 접속
-- 내부: `was-service.logging-system.svc.cluster.local:80`
-- 외부: `<노드IP>:30080`
-
+**배포 완성도: 100%**

@@ -6,12 +6,12 @@ metadata:
 data:
   user_activity_streaming.py: |
     from pyspark.sql import SparkSession
-    from pyspark.sql.functions import from_json, col
-    from pyspark.sql.types import StructType, StructField, StringType, LongType
+    from pyspark.sql.functions import from_json, col, to_timestamp, year, month, dayofmonth, hour, when, lit, regexp_extract
+    from pyspark.sql.types import StructType, StructField, StringType, LongType, IntegerType, TimestampType
 
     spark = (
         SparkSession.builder
-        .appName("KafkaToMinIO_JSON")
+        .appName("KafkaToMinIO_Silver")
         .getOrCreate()
     )
 
@@ -28,6 +28,7 @@ data:
 
     spark.sparkContext.setLogLevel("WARN")
 
+    # Kafka에서 데이터 읽기
     df = spark.readStream \
         .format("kafka") \
         .option("kafka.bootstrap.servers", "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092") \
@@ -35,29 +36,101 @@ data:
         .option("startingOffsets", "latest") \
         .load()
 
-    json_df = df.selectExpr("CAST(value AS STRING) as json_value")
-
-    log_schema = StructType([
-            StructField("eventType", StringType()),
-            StructField("endpoint", StringType()),
-            StructField("actionType", StringType()),
-            StructField("userId", LongType()),
-            StructField("message", StringType()),
-            StructField("timestamp", StringType()),
-            StructField("metadata", StringType()),
-        ])
-
-    parsed_df = (
-        df.selectExpr("CAST(value AS STRING) as json")
-          .select(from_json("json", log_schema).alias("data"))
-          .select("data.*")
+    # Bronze 레이어: Raw JSON + Metadata
+    bronze_df = df.selectExpr(
+        "CAST(value AS STRING) AS raw_json",
+        "topic",
+        "partition",
+        "offset",
+        "CAST(timestamp AS STRING) AS kafka_timestamp"
     )
 
+    # JSON 파싱 스키마
+    log_schema = StructType([
+        StructField("eventType", StringType()),
+        StructField("endpoint", StringType()),
+        StructField("actionType", StringType()),
+        StructField("userId", LongType()),
+        StructField("message", StringType()),
+        StructField("timestamp", StringType()),
+        StructField("metadata", StringType()),
+    ])
+
+    # Silver 레이어: 파싱 및 정제
+    parsed_df = (
+        bronze_df
+        .withColumn("parsed", from_json(col("raw_json"), log_schema))
+        .select(
+            col("raw_json"),
+            col("topic"),
+            col("partition"),
+            col("offset"),
+            col("kafka_timestamp"),
+            col("parsed.eventType").alias("event_type"),
+            col("parsed.endpoint").alias("endpoint"),
+            col("parsed.actionType").alias("action_type"),
+            col("parsed.userId").alias("user_id"),
+            col("parsed.timestamp").alias("timestamp_str"),
+            col("parsed.metadata").alias("metadata")
+        )
+    )
+
+    # HTTP 메서드 및 상태 추출 (endpoint에서 추출)
+    silver_df = (
+        parsed_df
+        .withColumn("raw_json_clean", col("raw_json"))
+        .withColumn("http_method", 
+            when(col("endpoint").isNotNull(), 
+                regexp_extract(col("endpoint"), r"^(GET|POST|PUT|DELETE|PATCH)", 1))
+            .otherwise(lit(None).cast(StringType()))
+        )
+        .withColumn("status",
+            when(col("event_type").contains("ERROR"), lit("FAILED"))
+            .when(col("event_type").contains("SUCCESS"), lit("SUCCESS"))
+            .otherwise(lit("UNKNOWN"))
+        )
+        .withColumn("is_failed",
+            when(col("status") == "FAILED", lit(1))
+            .otherwise(lit(0))
+            .cast(IntegerType())
+        )
+        .withColumn("event_time",
+            to_timestamp(col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss.SSS")
+        )
+        .withColumn("year", year(col("event_time")))
+        .withColumn("month", month(col("event_time")))
+        .withColumn("day", dayofmonth(col("event_time")))
+        .withColumn("hour", hour(col("event_time")))
+        .withColumn("user_id", col("user_id").cast(IntegerType()))
+        .select(
+            "raw_json",
+            "topic",
+            "partition",
+            "offset",
+            "kafka_timestamp",
+            "raw_json_clean",
+            "http_method",
+            "status",
+            "is_failed",
+            "event_type",
+            "user_id",
+            "endpoint",
+            "action_type",
+            "event_time",
+            "year",
+            "month",
+            "day",
+            "hour"
+        )
+    )
+
+    # Silver 레이어를 Parquet 형식으로 저장
     query = (
-        parsed_df.writeStream
-        .format("json")
-        .option("path", "s3a://mybucket/output-json/")
-        .option("checkpointLocation", "/tmp/spark-checkpoint-minio")
+        silver_df.writeStream
+        .format("parquet")
+        .option("path", "s3a://silver/user-activity-v2/")
+        .option("checkpointLocation", "/tmp/spark-checkpoint-silver")
+        .partitionBy("year", "month", "day", "hour")
         .outputMode("append")
         .start()
     )

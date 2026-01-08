@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spark-gold
+  namespace: default
+spec:
+  serviceAccountName: spark
+  containers:
+  - name: spark
+    image: doyoomii/spark-k8s:latest
+    imagePullPolicy: Always
+    env:
+    # MinIO 설정
+    - name: MINIO_ENDPOINT
+      value: "http://minio.storage.svc.cluster.local:9000"
+    - name: MINIO_ACCESS_KEY
+      value: "admin"
+    - name: MINIO_SECRET_KEY
+      value: "password1234"
+    # ClickHouse 설정
+    - name: CLICKHOUSE_HOST
+      value: "clickhouse.storage.svc.cluster.local"
+    - name: CLICKHOUSE_PROTOCOL
+      value: "http"
+    - name: CLICKHOUSE_HTTP_PORT
+      value: "8123"
+    - name: CLICKHOUSE_DB
+      value: "logs"
+    - name: CLICKHOUSE_USER
+      value: "default"
+    - name: CLICKHOUSE_PASSWORD
+      value: ""
+    # Spark 설정
+    - name: SCALA_BINARY_VERSION
+      value: "2.12"
+    - name: CLICKHOUSE_SPARK_CONNECTOR_VERSION
+      value: "0.9.0"
+    - name: CLICKHOUSE_JDBC_VERSION
+      value: "0.9.4"
+    command: ["/opt/spark/bin/spark-submit"]
+    args:
+      - "--master"
+      - "local[*]"
+      - "--packages"
+      - "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,com.clickhouse.spark:clickhouse-spark-runtime-3.5_2.12:0.9.0,com.clickhouse:clickhouse-jdbc:0.9.4"
+      - "--conf"
+      - "spark.driver.extraJavaOptions=-Divy.cache.dir=/tmp -Divy.home=/tmp"
+      - "--conf"
+      - "spark.hadoop.fs.s3a.endpoint=http://minio.storage.svc.cluster.local:9000"
+      - "--conf"
+      - "spark.hadoop.fs.s3a.access.key=admin"
+      - "--conf"
+      - "spark.hadoop.fs.s3a.secret.key=password1234"
+      - "--conf"
+      - "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"
+      - "--conf"
+      - "spark.hadoop.fs.s3a.path.style.access=true"
+      - "--conf"
+      - "spark.sql.catalog.clickhouse=com.clickhouse.spark.ClickHouseCatalog"
+      - "--conf"
+      - "spark.sql.catalog.clickhouse.host=clickhouse.storage.svc.cluster.local"
+      - "--conf"
+      - "spark.sql.catalog.clickhouse.protocol=http"
+      - "--conf"
+      - "spark.sql.catalog.clickhouse.http_port=8123"
+      - "--conf"
+      - "spark.sql.catalog.clickhouse.user=default"
+      - "--conf"
+      - "spark.sql.catalog.clickhouse.password="
+      - "--conf"
+      - "spark.sql.catalog.clickhouse.database=logs"
+      - "/opt/spark/code/clickhouse_gold.py"
+    volumeMounts:
+      - name: spark-gold-code
+        mountPath: /opt/spark/code
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  volumes:
+    - name: spark-gold-code
+      configMap:
+        name: spark-gold-code
+  restartPolicy: OnFailure
+
