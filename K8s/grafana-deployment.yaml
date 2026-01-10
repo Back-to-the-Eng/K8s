@@ -63,7 +63,7 @@ spec:
             - name: GF_SERVER_ROOT_URL
               value: "%(protocol)s://%(domain)s:%(http_port)s/"
             - name: GF_INSTALL_PLUGINS
-              value: "vertamedia-clickhouse-datasource"
+              value: "grafana-clickhouse-datasource"
           volumeMounts:
             - name: grafana-storage
               mountPath: /var/lib/grafana
