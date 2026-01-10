@@ -55,15 +55,15 @@ spec:
           ports:
             - containerPort: 3000
               name: http
-                env:
-                  - name: GF_SECURITY_ADMIN_USER
-                    value: "admin"
-                  - name: GF_SECURITY_ADMIN_PASSWORD
-                    value: "admin"
-                  - name: GF_SERVER_ROOT_URL
-                    value: "%(protocol)s://%(domain)s:%(http_port)s/"
-                  - name: GF_INSTALL_PLUGINS
-                    value: "vertamedia-clickhouse-datasource"
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"
+            - name: GF_SERVER_ROOT_URL
+              value: "%(protocol)s://%(domain)s:%(http_port)s/"
+            - name: GF_INSTALL_PLUGINS
+              value: "vertamedia-clickhouse-datasource"
           volumeMounts:
             - name: grafana-storage
               mountPath: /var/lib/grafana
@@ -72,6 +72,9 @@ spec:
               readOnly: true
             - name: grafana-dashboard-provisioning
               mountPath: /etc/grafana/provisioning/dashboards
+              readOnly: true
+            - name: grafana-dashboard-monitoring
+              mountPath: /var/lib/grafana/dashboards
               readOnly: true
           resources:
             requests:
@@ -89,4 +92,7 @@ spec:
       - name: grafana-dashboard-provisioning
         configMap:
           name: grafana-dashboard-provisioning
+      - name: grafana-dashboard-monitoring
+        configMap:
+          name: grafana-dashboard-monitoring
 
