@@ -24,5 +24,6 @@ data:
           port: 8123
           server: clickhouse.storage.svc.cluster.local
           username: default
-          password: ""
+        secureJsonData:
+          password: "backtoeng"
 
