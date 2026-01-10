@@ -21,11 +21,11 @@ spec:
     plugin.path: /opt/kafka/plugins
   resources:
     requests:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 200m
+      memory: 256Mi
     limits:
-      cpu: 2000m
-      memory: 2Gi
+      cpu: 1000m
+      memory: 1Gi
   # HDFS Connector 플러그인을 포함한 커스텀 이미지 사용 시
   # image: your-registry/kafka-connect-hdfs:latest
 

@@ -7,8 +7,8 @@ spec:
   serviceAccountName: spark
   containers:
   - name: spark
-    image: doyoomii/spark-k8s:latest
-    imagePullPolicy: Always
+    image: apache/spark:3.5.1-scala2.12-java11-python3-ubuntu
+    imagePullPolicy: IfNotPresent
     env:
     # MinIO 설정
     - name: MINIO_ENDPOINT
@@ -75,11 +75,11 @@ spec:
         mountPath: /opt/spark/code
     resources:
       requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
         memory: "1Gi"
         cpu: "500m"
-      limits:
-        memory: "2Gi"
-        cpu: "1000m"
   volumes:
     - name: spark-gold-code
       configMap:

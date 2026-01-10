@@ -7,8 +7,8 @@ spec:
   serviceAccountName: spark
   containers:
   - name: spark
-    image: doyoomii/spark-k8s:latest
-    imagePullPolicy: Always
+    image: apache/spark:3.5.1
+    imagePullPolicy: IfNotPresent
     env:
     - name: KAFKA_BOOTSTRAP_SERVERS
       value: "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
@@ -36,11 +36,11 @@ spec:
         mountPath: /opt/spark/code
     resources:
       requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
         memory: "1Gi"
         cpu: "500m"
-      limits:
-        memory: "2Gi"
-        cpu: "1000m"
   volumes:
     - name: spark-code
       configMap:
