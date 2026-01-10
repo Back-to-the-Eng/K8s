@@ -284,7 +284,7 @@ data:
                     )
                     .withColumn("conv_main_to_order", when(col("main_users") > 0, col("order_users") / col("main_users")).otherwise(lit(0.0)))
                     .select(
-                        col("hour_bucket").alias("hour"),
+                        "hour_bucket",
                         "funnel", "main_users", "cart_add_users", "order_users", "conv_main_to_order"
                     )
                 )

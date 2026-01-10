@@ -85,4 +85,3 @@ spec:
       configMap:
         name: spark-gold-code
   restartPolicy: OnFailure
-
