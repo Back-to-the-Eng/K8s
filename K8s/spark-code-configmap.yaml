@@ -5,8 +5,9 @@ metadata:
   namespace: default
 data:
   user_activity_streaming.py: |
+    import re
     from pyspark.sql import SparkSession
-    from pyspark.sql.functions import from_json, col, to_timestamp, year, month, dayofmonth, hour, when, lit, regexp_extract
+    from pyspark.sql.functions import col, to_timestamp, year, month, dayofmonth, hour, when, lit, regexp_extract, substring, udf
     from pyspark.sql.types import StructType, StructField, StringType, LongType, IntegerType, TimestampType
 
     spark = (
@@ -28,6 +29,29 @@ data:
 
     spark.sparkContext.setLogLevel("WARN")
 
+    # UDF 정의 (로컬 코드와 동일)
+    def extract_action_type(log):
+        if log is None:
+            return None
+        tokens = re.split(r"\] ?", log)
+        if len(tokens) < 2:
+            return None
+        seg = tokens[1].strip().split(" ")
+        if seg[0] == "-":
+            return seg[1]
+        return seg[0]
+
+    def extract_endpoint(log):
+        if log is None:
+            return None
+        match = re.search(r"(GET|POST|PUT|DELETE)\s+(\S+)", log)
+        if match:
+            return match.group(2)
+        return None
+
+    extract_action_type_udf = udf(extract_action_type, StringType())
+    extract_endpoint_udf = udf(extract_endpoint, StringType())
+
     # Kafka에서 데이터 읽기
     df = spark.readStream \
         .format("kafka") \
@@ -45,70 +69,61 @@ data:
         "CAST(timestamp AS STRING) AS kafka_timestamp"
     )
 
-    # JSON 파싱 스키마
-    log_schema = StructType([
-        StructField("eventType", StringType()),
-        StructField("endpoint", StringType()),
-        StructField("actionType", StringType()),
-        StructField("userId", LongType()),
-        StructField("message", StringType()),
-        StructField("timestamp", StringType()),
-        StructField("metadata", StringType()),
-    ])
+    # raw_json 정리 (로컬 코드와 동일)
+    cleaned_df = bronze_df.withColumn(
+        "raw_json_clean",
+        regexp_extract(col("raw_json"), r"^.*?(\[[A-Z_]+.*)", 1)
+    )
 
-    # Silver 레이어: 파싱 및 정제
+    # Silver 레이어: 정규표현식으로 파싱 (로컬 코드와 동일)
     parsed_df = (
-        bronze_df
-        .withColumn("parsed", from_json(col("raw_json"), log_schema))
-        .select(
-            col("raw_json"),
-            col("topic"),
-            col("partition"),
-            col("offset"),
-            col("kafka_timestamp"),
-            col("parsed.eventType").alias("event_type"),
-            col("parsed.endpoint").alias("endpoint"),
-            col("parsed.actionType").alias("action_type"),
-            col("parsed.userId").alias("user_id"),
-            col("parsed.timestamp").alias("timestamp_str"),
-            col("parsed.metadata").alias("metadata")
+        cleaned_df
+        .withColumn("event_type", regexp_extract(col("raw_json_clean"), r"\[(.*?)\]", 1))
+        .withColumn("user_id", regexp_extract(col("raw_json_clean"), r"\b(\d{3,6})\b", 1).cast(IntegerType()))
+        .withColumn("endpoint", extract_endpoint_udf(col("raw_json_clean")))
+        .withColumn("action_type", extract_action_type_udf(col("raw_json_clean")))
+        .withColumn(
+            "event_time_raw",
+            regexp_extract(col("raw_json_clean"), r"(20\d{2}-\d{2}-\d{2}T[\d:\.]+)", 1)
         )
     )
 
-    # HTTP 메서드 및 상태 추출 (endpoint에서 추출)
+    # Timestamp 안정화 (로컬 코드와 동일: 26자 포맷)
+    parsed_df = parsed_df.withColumn("event_time_trim", substring(col("event_time_raw"), 1, 26))
+    parsed_df = parsed_df.withColumn(
+        "event_time",
+        to_timestamp(col("event_time_trim"), "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+    )
+
+    # HTTP 메서드 및 상태 추출 (로컬 코드와 동일)
     silver_df = (
         parsed_df
-        .withColumn("raw_json_clean", col("raw_json"))
-        .withColumn("http_method", 
-            when(col("endpoint").isNotNull(), 
-                regexp_extract(col("endpoint"), r"^(GET|POST|PUT|DELETE|PATCH)", 1))
-            .otherwise(lit(None).cast(StringType()))
+        .withColumn(
+            "http_method",
+            regexp_extract(col("raw_json_clean"), r"\b(GET|POST|PUT|DELETE)\b", 1)
         )
-        .withColumn("status",
-            when(col("event_type").contains("ERROR"), lit("FAILED"))
-            .when(col("event_type").contains("SUCCESS"), lit("SUCCESS"))
-            .otherwise(lit("UNKNOWN"))
+        .withColumn(
+            "status",
+            regexp_extract(col("raw_json_clean"), r"\b(API_CALL|API_FINISH|DATA_LOOKUP|FAILED)\b", 1)
         )
+        .withColumn("http_method", when(col("http_method") == "", lit(None)).otherwise(col("http_method")))
+        .withColumn("status", when(col("status") == "", lit(None)).otherwise(col("status")))
         .withColumn("is_failed",
-            when(col("status") == "FAILED", lit(1))
+            when(col("status") == lit("FAILED"), lit(1))
             .otherwise(lit(0))
             .cast(IntegerType())
-        )
-        .withColumn("event_time",
-            to_timestamp(col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss.SSS")
         )
         .withColumn("year", year(col("event_time")))
         .withColumn("month", month(col("event_time")))
         .withColumn("day", dayofmonth(col("event_time")))
         .withColumn("hour", hour(col("event_time")))
-        .withColumn("user_id", col("user_id").cast(IntegerType()))
         .select(
-            "raw_json",
+            col("raw_json"),
             "topic",
             "partition",
             "offset",
             "kafka_timestamp",
-            "raw_json_clean",
+            col("raw_json_clean"),
             "http_method",
             "status",
             "is_failed",
@@ -136,4 +151,5 @@ data:
     )
 
     query.awaitTermination()
+
 

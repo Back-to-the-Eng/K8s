@@ -11,18 +11,19 @@ data:
         type: prometheus
         access: proxy
         url: http://prometheus.monitoring.svc.cluster.local:9090
-        isDefault: true
+        isDefault: false
         editable: true
       - name: ClickHouse
-        type: vertamedia-clickhouse-datasource
+        uid: clickhouse
+        type: grafana-clickhouse-datasource
         access: proxy
-        url: http://clickhouse.storage.svc.cluster.local:8123
-        isDefault: false
+        isDefault: true
         editable: true
         jsonData:
           defaultDatabase: logs
-          port: 8123
+          protocol: http
           server: clickhouse.storage.svc.cluster.local
+          port: 8123
           username: default
         secureJsonData:
           password: "backtoeng"
