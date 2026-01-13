@@ -5,6 +5,13 @@ metadata:
   namespace: default
 spec:
   serviceAccountName: spark
+  initContainers:
+  - name: init-checkpoint-dir
+    image: busybox:1.36
+    command: ['sh', '-c', 'mkdir -p /app/checkpoints && chmod 777 /app/checkpoints']
+    volumeMounts:
+    - name: checkpoint-storage
+      mountPath: /app/checkpoints
   containers:
   - name: spark
     image: apache/spark:3.5.1-scala2.12-java11-python3-ubuntu
