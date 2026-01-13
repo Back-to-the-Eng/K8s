@@ -73,15 +73,20 @@ spec:
     volumeMounts:
       - name: spark-gold-code
         mountPath: /opt/spark/code
+      - name: checkpoint-storage
+        mountPath: /app/checkpoints
     resources:
       requests:
-        memory: "512Mi"
-        cpu: "200m"
+        memory: "4Gi"
+        cpu: "1000m"
       limits:
-        memory: "1Gi"
-        cpu: "500m"
+        memory: "8Gi"
+        cpu: "4000m"
   volumes:
-    - name: spark-gold-code
-      configMap:
-        name: spark-gold-code
+  - name: spark-gold-code
+    configMap:
+      name: spark-gold-code
+  - name: checkpoint-storage
+    persistentVolumeClaim:
+      claimName: spark-gold-checkpoint-pvc
   restartPolicy: OnFailure

@@ -4,7 +4,7 @@ metadata:
   name: was-deployment
   namespace: was
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: was
