@@ -14,18 +14,12 @@ spec:
   # 코드는 ConfigMap에서 가져옴
   mainApplicationFile: "local:///opt/spark/code/clickhouse_gold.py"
   
-  # 패키지 의존성
-  deps:
-    packages:
-    - "org.apache.hadoop:hadoop-aws:3.3.4"
-    - "com.amazonaws:aws-java-sdk-bundle:1.12.262"
-    - "com.clickhouse.spark:clickhouse-spark-runtime-3.5_2.12:0.9.0"
-    - "com.clickhouse:clickhouse-jdbc:0.9.4"
-  
   # Spark 설정
   sparkConf:
     "spark.kubernetes.container.image.pullPolicy": "IfNotPresent"
     "spark.driver.extraJavaOptions": "-Divy.cache.dir=/tmp -Divy.home=/tmp"
+    "spark.executor.extraJavaOptions": "-Divy.cache.dir=/tmp -Divy.home=/tmp"
+    "spark.jars.packages": "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,com.clickhouse.spark:clickhouse-spark-runtime-3.5_2.12:0.9.0,com.clickhouse:clickhouse-jdbc:0.9.4"
     "spark.hadoop.fs.s3a.endpoint": "http://minio.storage.svc.cluster.local:9000"
     "spark.hadoop.fs.s3a.access.key": "admin"
     "spark.hadoop.fs.s3a.secret.key": "password1234"
@@ -54,6 +48,10 @@ spec:
     cores: 1
     memory: "2g"
     serviceAccount: spark
+    initContainers:
+    - name: init-ivy-cache
+      image: busybox:1.36
+      command: ["sh", "-c", "mkdir -p /tmp/.ivy2/cache /tmp/.ivy2/jars && chmod -R 777 /tmp/.ivy2"]
     env:
     - name: MINIO_ENDPOINT
       value: "http://minio.storage.svc.cluster.local:9000"

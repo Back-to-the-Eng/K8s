@@ -73,9 +73,6 @@ spec:
     volumeMounts:
       - name: spark-gold-code
         mountPath: /opt/spark/code
-      - name: checkpoint-storage
-        mountPath: /app/checkpoints
-    resources:
       requests:
         memory: "1Gi"  # 임시로 더 줄임 (스케줄링 가능하게)
         cpu: "200m"    # 임시로 더 줄임
@@ -86,7 +83,4 @@ spec:
   - name: spark-gold-code
     configMap:
       name: spark-gold-code
-  - name: checkpoint-storage
-    persistentVolumeClaim:
-      claimName: spark-gold-checkpoint-pvc
   restartPolicy: OnFailure
