@@ -37,7 +37,7 @@ data:
         ENABLE_CONSOLE_LOG = os.getenv("ENABLE_CONSOLE_LOG", "false").lower() == "true"
 
         # PVC에 마운트된 경로 사용 (Pod 재시작 시에도 유지됨)
-        gold_checkpoint = "s3a://gold/checkpoints/gold_v11"  # S3 체크포인트 사용 (완전 리셋)
+        gold_checkpoint = "s3a://gold/checkpoints/gold_v12"  # 새로운 체크포인트로 재시작하여 모든 파일 재처리
         silver_input = "s3a://silver/user-activity-v2/"
 
         # ClickHouse 설정
@@ -83,7 +83,7 @@ data:
             .getOrCreate()
         )
 
-        spark.sparkContext.setLogLevel("WARN")
+        spark.sparkContext.setLogLevel("INFO")  # WARN -> INFO로 변경하여 스트리밍 쿼리 진행 상황 확인
         normalize_path_udf = spark.udf.register("normalize_path", normalize_path, StringType())
 
         # Schema 정의
@@ -112,8 +112,9 @@ data:
             spark.readStream
             .format("parquet")
             .schema(silver_schema)
-            .option("maxFilesPerTrigger", 10)
+            .option("maxFilesPerTrigger", 100)  # 10 -> 100으로 증가하여 더 많은 파일 처리
             .option("ignoreMissingFiles", "true")  # 누락된 파일 무시
+            .option("recursiveFileLookup", "true")  # 재귀적으로 파일 검색
             .load(silver_input)
         )
 

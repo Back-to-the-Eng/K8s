@@ -35,6 +35,7 @@ spec:
     "spark.sql.catalog.clickhouse.database": "logs"
     "spark.driver.memory": "2g"
     "spark.executor.memory": "4g"
+    "spark.dynamicAllocation.enabled": "false"  # Dynamic Allocation 비활성화하여 instances 설정 적용
   
   # 재시작 정책
   restartPolicy:
