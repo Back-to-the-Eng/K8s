@@ -58,6 +58,7 @@ data:
         .option("kafka.bootstrap.servers", "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092") \
         .option("subscribe", "user-activity-logs") \
         .option("startingOffsets", "latest") \
+        .option("failOnDataLoss", "false") \
         .load()
 
     # Bronze 레이어: Raw JSON + Metadata

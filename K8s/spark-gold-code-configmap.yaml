@@ -112,9 +112,8 @@ data:
             spark.readStream
             .format("parquet")
             .schema(silver_schema)
-            .option("maxFilesPerTrigger", 100)  # 10 -> 100으로 증가하여 더 많은 파일 처리
+            .option("maxFilesPerTrigger", 10)
             .option("ignoreMissingFiles", "true")  # 누락된 파일 무시
-            .option("recursiveFileLookup", "true")  # 재귀적으로 파일 검색
             .load(silver_input)
         )
 
