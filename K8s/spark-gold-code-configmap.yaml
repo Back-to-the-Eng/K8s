@@ -113,7 +113,6 @@ data:
             .format("parquet")
             .schema(silver_schema)
             .option("maxFilesPerTrigger", 10)
-            .option("latestFirst", "true")  # 최신 파일부터 읽기
             .option("ignoreMissingFiles", "true")  # 누락된 파일 무시
             .load(silver_input)
         )
