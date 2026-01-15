@@ -311,7 +311,7 @@ data:
                     ("metrics_server_health_minutely", metrics_server_health_minutely),
                     ("metrics_operational_hourly", metrics_operational_hourly),
                     ("metrics_business_daily", metrics_business_daily),
-                    ("metrics_funnel_hourly", f1_hourly),
+                    ("metrics_funnel_daily", f1_daily),
                     ("metrics_data_quality_hourly", metrics_data_quality_hourly),
                 ]
 
