@@ -139,17 +139,29 @@ data:
         )
     )
 
+    # Bronze 레이어를 JSON 형식으로 저장 (Raw 데이터 보존)
+    bronze_query = (
+        bronze_df.writeStream
+        .format("json")
+        .option("path", "s3a://raw-data/user-activity/")
+        .option("checkpointLocation", "s3a://raw-data/checkpoints/bronze_v1")
+        .partitionBy("topic")
+        .outputMode("append")
+        .start()
+    )
+
     # Silver 레이어를 Parquet 형식으로 저장
-    query = (
+    silver_query = (
         silver_df.writeStream
         .format("parquet")
         .option("path", "s3a://silver/user-activity-v2/")
-        .option("checkpointLocation", "/tmp/spark-checkpoint-silver")
+        .option("checkpointLocation", "s3a://silver/checkpoints/silver_v1")
         .partitionBy("year", "month", "day", "hour")
         .outputMode("append")
         .start()
     )
 
-    query.awaitTermination()
+    # 두 스트림 모두 실행
+    spark.streams.awaitAnyTermination()
 
 

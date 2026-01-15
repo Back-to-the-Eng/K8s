@@ -37,7 +37,7 @@ data:
         ENABLE_CONSOLE_LOG = os.getenv("ENABLE_CONSOLE_LOG", "false").lower() == "true"
 
         # PVC에 마운트된 경로 사용 (Pod 재시작 시에도 유지됨)
-        gold_checkpoint = "/app/checkpoints/gold_clickhouse_spark351_prod_v5"  # v5: PVC 사용
+        gold_checkpoint = "s3a://gold/checkpoints/gold_v7"  # S3 체크포인트 사용
         silver_input = "s3a://silver/user-activity-v2/"
 
         # ClickHouse 설정
