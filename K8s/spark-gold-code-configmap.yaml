@@ -37,7 +37,7 @@ data:
         ENABLE_CONSOLE_LOG = os.getenv("ENABLE_CONSOLE_LOG", "false").lower() == "true"
 
         # PVC에 마운트된 경로 사용 (Pod 재시작 시에도 유지됨)
-        gold_checkpoint = "s3a://gold/checkpoints/gold_v7"  # S3 체크포인트 사용
+        gold_checkpoint = "s3a://gold/checkpoints/gold_v9"  # S3 체크포인트 사용 (메타데이터 문제 해결)
         silver_input = "s3a://silver/user-activity-v2/"
 
         # ClickHouse 설정
@@ -113,6 +113,8 @@ data:
             .format("parquet")
             .schema(silver_schema)
             .option("maxFilesPerTrigger", 10)
+            .option("latestFirst", "true")  # 최신 파일부터 읽기
+            .option("ignoreMissingFiles", "true")  # 누락된 파일 무시
             .load(silver_input)
         )
 
