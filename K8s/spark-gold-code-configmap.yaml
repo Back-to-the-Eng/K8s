@@ -37,7 +37,7 @@ data:
         ENABLE_CONSOLE_LOG = os.getenv("ENABLE_CONSOLE_LOG", "false").lower() == "true"
 
         # PVC에 마운트된 경로 사용 (Pod 재시작 시에도 유지됨)
-        gold_checkpoint = "s3a://gold/checkpoints/gold_v9"  # S3 체크포인트 사용 (메타데이터 문제 해결)
+        gold_checkpoint = "s3a://gold/checkpoints/gold_v11"  # S3 체크포인트 사용 (완전 리셋)
         silver_input = "s3a://silver/user-activity-v2/"
 
         # ClickHouse 설정

@@ -84,5 +84,6 @@ spec:
             cpu: "1000m"
       volumes:
       - name: clickhouse-storage
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: clickhouse-pvc
 

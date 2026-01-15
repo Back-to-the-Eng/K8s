@@ -87,5 +87,6 @@ spec:
               cpu: "1000m"
       volumes:
         - name: minio-storage
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: minio-pvc
 
