@@ -87,7 +87,7 @@ spec:
   executor:
     cores: 2
     memory: "4g"
-    instances: 3  # Executor 3개로 분산 처리
+    instances: 3  # Executor 3개로 분산 처리 
     env:
     - name: MINIO_ENDPOINT
       value: "http://minio.storage.svc.cluster.local:9000"
