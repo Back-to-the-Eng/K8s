@@ -19,6 +19,13 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
         env:
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
