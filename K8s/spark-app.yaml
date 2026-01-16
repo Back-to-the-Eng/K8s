@@ -6,15 +6,19 @@ metadata:
 spec:
   type: Python
   mode: cluster
-  sparkVersion: "3.3.1"
+  sparkVersion: "3.5.1"
 
-  image: "doyoomii/spark-k8s:latest"
+  image: "apache/spark:3.5.1-scala2.12-java11-python3-ubuntu"
   imagePullPolicy: Always
 
-  mainApplicationFile: "local:///opt/spark/app/user_activity_streaming.py"
+  mainApplicationFile: "local:///opt/spark/code/user_activity_streaming.py"
 
   sparkConf:
     "spark.kubernetes.container.image.pullPolicy": "Always"
+    "spark.jars.packages": "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1"
+    "spark.jars.ivy": "/tmp/.ivy2"
+    "spark.driver.extraJavaOptions": "-Divy.cache.dir=/tmp -Divy.home=/tmp -Divy.default.ivy.user.dir=/tmp"
+    "spark.executor.extraJavaOptions": "-Divy.cache.dir=/tmp -Divy.home=/tmp -Divy.default.ivy.user.dir=/tmp"
 
   restartPolicy:
     type: OnFailure
@@ -28,7 +32,10 @@ spec:
     memory: "1g"
     serviceAccount: spark
     labels:
-      version: "3.3.1"
+      version: "3.5.1"
+    volumeMounts:
+    - name: spark-code
+      mountPath: /opt/spark/code
     env:
       - name: KAFKA_BOOTSTRAP_SERVERS
         value: "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
@@ -38,7 +45,15 @@ spec:
     memory: "2g"
     instances: 2
     labels:
-      version: "3.3.1"
+      version: "3.5.1"
+    volumeMounts:
+    - name: spark-code
+      mountPath: /opt/spark/code
     env:
       - name: KAFKA_BOOTSTRAP_SERVERS
         value: "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+
+  volumes:
+  - name: spark-code
+    configMap:
+      name: spark-app-code

@@ -17,12 +17,26 @@ spec:
       transaction.state.log.min.isr: 2
       default.replication.factor: 3
       min.insync.replicas: 2
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "1Gi"
+      limits:
+        cpu: "500m"
+        memory: "2Gi"
     storage:
       type: persistent-claim
       size: 10Gi
       class: gp3
   zookeeper:
     replicas: 3
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "512Mi"
+      limits:
+        cpu: "300m"
+        memory: "1Gi"
     storage:
       type: persistent-claim
       size: 10Gi
