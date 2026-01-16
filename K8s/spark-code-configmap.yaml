@@ -148,7 +148,7 @@ data:
     silver_query = (
         silver_df.writeStream
         .format("parquet")
-        .option("path", "s3a://silver/user-activity-v2/")
+        .option("path", "s3a://silver/user-activity-v3/")
         .option("checkpointLocation", "s3a://silver/checkpoints/silver_v3")
         .partitionBy("year", "month", "day", "hour")
         .outputMode("append")
