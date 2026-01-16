@@ -58,6 +58,7 @@ data:
         .option("kafka.bootstrap.servers", "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092") \
         .option("subscribe", "user-activity-logs") \
         .option("startingOffsets", "latest") \
+        .option("failOnDataLoss", "false") \
         .load()
 
     # Bronze 레이어: Raw JSON + Metadata
@@ -139,29 +140,22 @@ data:
         )
     )
 
-    # Bronze 레이어를 JSON 형식으로 저장 (Raw 데이터 보존)
-    bronze_query = (
-        bronze_df.writeStream
-        .format("json")
-        .option("path", "s3a://raw-data/user-activity/")
-        .option("checkpointLocation", "s3a://raw-data/checkpoints/bronze_v1")
-        .partitionBy("topic")
-        .outputMode("append")
-        .start()
-    )
+    # Bronze 레이어는 MinIO에 저장하지 않음 (메모리에서만 처리)
+    # Bronze → Silver는 직접 메모리 전달
 
     # Silver 레이어를 Parquet 형식으로 저장
+    # checkpoint 경로를 v2로 변경하여 Kafka 토픽 재생성 후 오프셋 초기화
     silver_query = (
         silver_df.writeStream
         .format("parquet")
         .option("path", "s3a://silver/user-activity-v2/")
-        .option("checkpointLocation", "s3a://silver/checkpoints/silver_v1")
+        .option("checkpointLocation", "s3a://silver/checkpoints/silver_v2")
         .partitionBy("year", "month", "day", "hour")
         .outputMode("append")
         .start()
     )
 
-    # 두 스트림 모두 실행
-    spark.streams.awaitAnyTermination()
+    # Silver 스트림 실행
+    silver_query.awaitTermination()
 
 
