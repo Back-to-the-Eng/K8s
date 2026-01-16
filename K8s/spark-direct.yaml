@@ -16,6 +16,8 @@ spec:
     args:
       - "--master"
       - "local[*]"
+      - "--driver-memory"
+      - "3g"
       - "--packages"
       - "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.apache.hadoop:hadoop-aws:3.3.4,org.apache.hadoop:hadoop-common:3.3.4"
       - "--conf"
@@ -36,11 +38,11 @@ spec:
         mountPath: /opt/spark/code
     resources:
       requests:
-        memory: "512Mi"
-        cpu: "200m"
-      limits:
         memory: "2Gi"
         cpu: "500m"
+      limits:
+        memory: "4Gi"
+        cpu: "1"
   volumes:
     - name: spark-code
       configMap:

@@ -76,6 +76,9 @@ spec:
             - name: grafana-dashboard-monitoring
               mountPath: /var/lib/grafana/dashboards
               readOnly: true
+            - name: grafana-alerting
+              mountPath: /etc/grafana/provisioning/alerting
+              readOnly: true
           resources:
             requests:
               memory: "256Mi"
@@ -95,4 +98,7 @@ spec:
       - name: grafana-dashboard-monitoring
         configMap:
           name: grafana-dashboard-monitoring
+      - name: grafana-alerting
+        configMap:
+          name: grafana-alerting-config
 
