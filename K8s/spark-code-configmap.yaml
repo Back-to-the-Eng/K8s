@@ -140,16 +140,8 @@ data:
         )
     )
 
-    # Bronze 레이어를 JSON 형식으로 저장 (Raw 데이터 보존)
-    bronze_query = (
-        bronze_df.writeStream
-        .format("json")
-        .option("path", "s3a://raw-data/user-activity/")
-        .option("checkpointLocation", "s3a://raw-data/checkpoints/bronze_v1")
-        .partitionBy("topic")
-        .outputMode("append")
-        .start()
-    )
+    # Bronze 레이어는 MinIO에 저장하지 않음 (메모리에서만 처리)
+    # Bronze → Silver는 직접 메모리 전달
 
     # Silver 레이어를 Parquet 형식으로 저장
     silver_query = (
@@ -162,7 +154,7 @@ data:
         .start()
     )
 
-    # 두 스트림 모두 실행
-    spark.streams.awaitAnyTermination()
+    # Silver 스트림 실행
+    silver_query.awaitTermination()
 
 

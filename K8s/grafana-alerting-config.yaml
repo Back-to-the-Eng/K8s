@@ -15,7 +15,7 @@ data:
           - uid: discord-webhook
             type: discord
             settings:
-              url: "https://discord.com/api/webhooks/1461238915892510823/YmkhRHLMX5aC8-weE2k0StvsQGZH6flpR3FnFLo2OhIlEG_yvdxxOEJlhGIn6N0o0srF"
+              url: "https://discord.com/api/webhooks/1461244083396939818/yxDW5aWDeGrBdxMrbxtmGWbYCiU5ktd7NhR_230IA11T42HDWr0uN5GM13MvtczaXc2n"
               use_discord_username: true
               message: |
                 🚨 **{{ .CommonLabels.alertname }}**
