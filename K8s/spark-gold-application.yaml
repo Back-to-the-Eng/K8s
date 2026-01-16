@@ -35,10 +35,15 @@ spec:
     "spark.sql.catalog.clickhouse.database": "logs"
     "spark.driver.memory": "2g"
     "spark.executor.memory": "4g"
+    # Executor 실패 시 자동 재생성 설정
+    "spark.task.maxAttempts": "4"
+    "spark.kubernetes.executor.lostCheckInterval": "30"
+    # Dynamic Allocation 비활성화하여 instances 설정 적용
+    "spark.dynamicAllocation.enabled": "false"
   
-  # 재시작 정책
+  # 재시작 정책 - Always로 변경하여 Executor가 죽어도 재생성
   restartPolicy:
-    type: OnFailure
+    type: Always
     onFailureRetries: 3
     onFailureRetryInterval: 10
     onSubmissionFailureRetries: 3
@@ -46,7 +51,8 @@ spec:
   
   # Driver 설정
   driver:
-    cores: 1
+    cores: 1  # 최소값 유지 (정수만 가능)
+    coreRequest: "600m"  # CPU 요청을 더 줄여서 스케줄링 가능하도록
     memory: "2g"
     serviceAccount: spark
     initContainers:
@@ -87,8 +93,9 @@ spec:
   # Executor 설정 (분산 처리)
   executor:
     cores: 1
+    coreRequest: "600m"  # CPU 요청을 더 줄여서 스케줄링 가능하도록
     memory: "2g"
-    instances: 1  # Executor 1개로 줄여서 CPU 절약 (Spark Streaming 실행을 위해) 
+    instances: 2  # Executor 2개로 분산 처리 (m6i.large 리소스 제약)
     env:
     - name: MINIO_ENDPOINT
       value: "http://minio.storage.svc.cluster.local:9000"
