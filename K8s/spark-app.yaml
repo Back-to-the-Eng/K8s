@@ -15,13 +15,17 @@ spec:
 
   sparkConf:
     "spark.kubernetes.container.image.pullPolicy": "Always"
-    "spark.jars.packages": "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1"
+    "spark.jars.packages": "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262"
     "spark.jars.ivy": "/tmp/.ivy2"
     "spark.driver.extraJavaOptions": "-Divy.cache.dir=/tmp -Divy.home=/tmp -Divy.default.ivy.user.dir=/tmp"
     "spark.executor.extraJavaOptions": "-Divy.cache.dir=/tmp -Divy.home=/tmp -Divy.default.ivy.user.dir=/tmp"
+    # Executor 실패 시 자동 재생성 설정
+    "spark.task.maxAttempts": "4"
+    "spark.kubernetes.executor.lostCheckInterval": "30"
+    # Spark Streaming은 동적 할당 미지원이므로 제거
 
   restartPolicy:
-    type: OnFailure
+    type: Always  # Always로 변경하여 Executor가 죽어도 재생성
     onFailureRetries: 3
     onFailureRetryInterval: 10
     onSubmissionFailureRetries: 3
@@ -29,6 +33,7 @@ spec:
 
   driver:
     cores: 1
+    coreRequest: "800m"  # CPU 요청을 줄여서 리소스 효율성 향상
     memory: "1g"
     serviceAccount: spark
     labels:
@@ -39,11 +44,14 @@ spec:
     env:
       - name: KAFKA_BOOTSTRAP_SERVERS
         value: "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+      - name: PYTHONPATH
+        value: "/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip"
 
   executor:
     cores: 1
-    memory: "2g"
-    instances: 2
+    coreRequest: "500m"  # CPU 요청을 최소화하여 스케줄링 가능하도록
+    memory: "1g"  # 메모리 줄여서 스케줄링 가능하도록
+    instances: 1  # CPU 부족으로 임시로 1개로 줄임
     labels:
       version: "3.5.1"
     volumeMounts:
@@ -52,6 +60,8 @@ spec:
     env:
       - name: KAFKA_BOOTSTRAP_SERVERS
         value: "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+      - name: PYTHONPATH
+        value: "/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip"
 
   volumes:
   - name: spark-code
