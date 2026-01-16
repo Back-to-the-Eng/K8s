@@ -38,7 +38,7 @@ data:
 
         # PVC에 마운트된 경로 사용 (Pod 재시작 시에도 유지됨)
         gold_checkpoint = "s3a://gold/checkpoints/gold_v11"  # S3 체크포인트 사용 (완전 리셋)
-        silver_input = "s3a://silver/user-activity-v2/"
+        silver_input = "s3a://silver/user-activity-v3/"
 
         # ClickHouse 설정
         CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "clickhouse.storage.svc.cluster.local")
