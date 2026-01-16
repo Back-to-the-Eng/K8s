@@ -34,6 +34,9 @@ data:
             return df.rdd.isEmpty()
 
     def main():
+        print("=" * 50)
+        print("Starting Gold Layer Streaming Query...")
+        print("=" * 50)
         ENABLE_CONSOLE_LOG = os.getenv("ENABLE_CONSOLE_LOG", "false").lower() == "true"
 
         # PVC에 마운트된 경로 사용 (Pod 재시작 시에도 유지됨)
@@ -334,6 +337,8 @@ data:
                 raise
 
         # 스트리밍 시작
+        print(f"Starting streaming query from: {silver_input}")
+        print(f"Checkpoint location: {gold_checkpoint}")
         query = (
             processed_df.writeStream
             .foreachBatch(write_all_metrics)
@@ -341,7 +346,8 @@ data:
             .trigger(processingTime="1 minute")
             .start()
         )
-
+        print(f"Streaming query started! Query ID: {query.id}")
+        print("Waiting for termination...")
         query.awaitTermination()
 
     if __name__ == "__main__":

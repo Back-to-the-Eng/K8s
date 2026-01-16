@@ -57,7 +57,7 @@ data:
         .format("kafka") \
         .option("kafka.bootstrap.servers", "streaming-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092") \
         .option("subscribe", "user-activity-logs") \
-        .option("startingOffsets", "latest") \
+        .option("startingOffsets", "earliest") \
         .option("failOnDataLoss", "false") \
         .load()
 
@@ -145,6 +145,12 @@ data:
 
     # Silver 레이어를 Parquet 형식으로 저장
     # checkpoint 경로를 v3로 변경하여 Race condition 해결
+    print("=" * 50)
+    print("Starting Silver streaming query...")
+    print(f"Output path: s3a://silver/user-activity-v3/")
+    print(f"Checkpoint: s3a://silver/checkpoints/silver_v3")
+    print("=" * 50)
+    
     silver_query = (
         silver_df.writeStream
         .format("parquet")
@@ -154,6 +160,9 @@ data:
         .outputMode("append")
         .start()
     )
+    
+    print(f"Silver streaming query started! Query ID: {silver_query.id}")
+    print("Waiting for termination...")
 
     # Silver 스트림 실행
     silver_query.awaitTermination()
