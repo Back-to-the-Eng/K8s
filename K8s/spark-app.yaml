@@ -56,7 +56,7 @@ spec:
     cores: 1
     coreRequest: "500m"
     memory: "1g"
-    instances: 3  # Kafka 파티션 3개와 매칭하여 분산 처리 (실시간성 향상)
+    instances: 2  # Executor 2개로 조정
     labels:
       version: "3.5.1"
     volumeMounts:
