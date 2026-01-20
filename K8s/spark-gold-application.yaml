@@ -90,12 +90,12 @@ spec:
     - name: checkpoint-storage
       mountPath: /app/checkpoints  # PVC 마운트 (체크포인트 영구 저장)
   
-  # Executor 설정 (분산 처리)
+  # Executor 설정
   executor:
     cores: 1
     coreRequest: "600m"  # CPU 요청을 더 줄여서 스케줄링 가능하도록
     memory: "2g"
-    instances: 2  # Executor 2개로 분산 처리 (m6i.large 리소스 제약)
+    instances: 1  # Executor 1개 (Silver 분산 처리를 위한 리소스 확보)
     env:
     - name: MINIO_ENDPOINT
       value: "http://minio.storage.svc.cluster.local:9000"

@@ -54,9 +54,9 @@ spec:
 
   executor:
     cores: 1
-    coreRequest: "500m"  # CPU 요청을 최소화하여 스케줄링 가능하도록
-    memory: "1g"  # 메모리 줄여서 스케줄링 가능하도록
-    instances: 1  # CPU 부족으로 임시로 1개로 줄임
+    coreRequest: "500m"
+    memory: "1g"
+    instances: 3  # Kafka 파티션 3개와 매칭하여 분산 처리 (실시간성 향상)
     labels:
       version: "3.5.1"
     volumeMounts:
